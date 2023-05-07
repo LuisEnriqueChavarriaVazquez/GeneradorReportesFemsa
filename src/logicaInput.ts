@@ -17,6 +17,7 @@ let showFilesSelectedEmpty = document.getElementById('showFilesSelectedEmpty') a
 
 //Archivos de forma global
 let archivos: any;
+let datosArchivos: any[][];
 
 //////////////////////////////////
 
@@ -24,19 +25,17 @@ let archivos: any;
 //////////////////////////////////
 //ACCEDEMOS NOMBRE DE ARCHIVOS
 /////////////////////////////////
-
 //Debemos acceder a los archivos de los archivos
 function getFile() {
   if (inputArchivoExcel) {
-
     inputArchivoExcel.addEventListener('change', () => {
 
       //Accedemos a los archivos y los convertimos en array
-      let archivosSeleccionadosObject: any = inputArchivoExcel.files as any;
-      let archivosSeleccionados = [...archivosSeleccionadosObject];
+      const archivosSeleccionadosObject: any = inputArchivoExcel.files as any;
+      const archivosSeleccionados = [...archivosSeleccionadosObject];
 
       //Guardamos los nombre de los archivos
-      let nombreArchivos: string[] = archivosSeleccionados.map((nombreArchivo: File) => {
+      const nombreArchivos: string[] = archivosSeleccionados.map((nombreArchivo: File) => {
         return nombreArchivo.name;
       });
 
@@ -46,13 +45,25 @@ function getFile() {
       //Imprimimos los archivos en el contenedor con su nombre
       imprimirNombreFileDentroCaja(showFilesSelectedContainer, nombreArchivos);
 
-      //Leemos los archivos
-      archivosSeleccionados.forEach((archivo: File) => {
-        leerArchivoExcel(archivo);
+      const promesas = archivosSeleccionados.map((archivo: File) => {
+        return leerArchivoExcel(archivo);
       });
-    })
+
+      Promise.all(promesas).then((datosArchivos) => {
+
+        console.log('datosArchivos: ', datosArchivos);
+        // Convertimos el array a una cadena de texto en formato JSON
+        const datosArchivosJSON = JSON.stringify(datosArchivos);
+        // Guardamos los datos en el localStorage con la clave "datosArchivos"
+        localStorage.setItem('datos_archivos_memoria', datosArchivosJSON);
+
+      }).catch((error) => {
+        console.error(error);
+      });
+    });
   }
 }
+
 
 //Esta funcion imprime el nombre de los archivos elegidos
 function imprimirNombreFile(nombreFileContainer: HTMLElement, nombreArchivosArr: string[]) {
@@ -93,30 +104,39 @@ function imprimirNombreFileDentroCaja(nombreFileContainer: HTMLElement, nombreAr
   }
 }
 
-// Creamos una función para leer el archivo Excel
-const leerArchivoExcel = (archivo: File) => {
-  // Creamos una instancia del FileReader
-  const lector = new FileReader();
+// Creamos una función que recibe un archivo y devuelve una promesa que se resolverá con los datos JSON del archivo
+let leerArchivoExcel = (archivo: File): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    // Creamos una instancia del FileReader
+    const lector = new FileReader();
 
-  // Establecemos una función a ejecutar cuando se complete la carga del archivo
-  lector.onload = (evento: any) => {
-    // Obtenemos los datos del archivo en formato binario
-    const datos = evento.target.result;
-    // Parseamos los datos binarios en formato Excel y obtenemos un objeto libro
-    const libro = XLSX.read(datos, { type: 'binary' });
-    // Obtenemos el nombre de la primera hoja del libro
-    const nombreHoja = libro.SheetNames[0];
-    // Obtenemos la hoja correspondiente al nombre obtenido anteriormente
-    const hoja = libro.Sheets[nombreHoja];
-    // Convertimos la hoja a un objeto JSON
-    const datosJSON = XLSX.utils.sheet_to_json(hoja, { header: 1 });
-    // Hacemos algo con los datos JSON (en este caso, imprimimos en la consola)
-    console.log(datosJSON);
-  };
+    // Establecemos una función a ejecutar cuando se complete la carga del archivo
+    lector.onload = (evento: any) => {
+      // Obtenemos los datos del archivo en formato binario
+      const datos = evento.target.result;
+      // Parseamos los datos binarios en formato Excel y obtenemos un objeto libro
+      const libro = XLSX.read(datos, { type: 'binary' });
+      // Obtenemos el nombre de la primera hoja del libro
+      const nombreHoja = libro.SheetNames[0];
+      // Obtenemos la hoja correspondiente al nombre obtenido anteriormente
+      const hoja = libro.Sheets[nombreHoja];
+      // Convertimos la hoja a un objeto JSON
+      const datosJSON = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+      // Resolvemos la promesa con los datos JSON
+      resolve(datosJSON);
+    };
 
-  // Leemos el contenido del archivo como una cadena binaria
-  lector.readAsBinaryString(archivo);
+    // Establecemos una función a ejecutar en caso de error
+    lector.onerror = (evento: any) => {
+      // Rechazamos la promesa con el error obtenido
+      reject(evento.target.error);
+    };
+
+    // Leemos el contenido del archivo como una cadena binaria
+    lector.readAsBinaryString(archivo);
+  });
 };
+
 
 //Simplemente activamos la funcion de getFile al dar click en el boton
 buttonSelect.addEventListener('click', () => {
@@ -177,30 +197,73 @@ function agregarFormato(slide: any) {
 
 //Creamos el reporte
 createReport?.addEventListener('click', () => {
-  const pptx = new PptxGenJS();
 
-  // Añadimos una nueva diapositiva con un título
-  const slide1 = pptx.addSlide({ masterName: 'Primera diapositiva.' });
+    //Son los datos provenientes de los excel que fueron guardados de forma asincrona en memoria
+    let datosConvertidos = localStorage.getItem('datos_archivos_memoria');
 
-  agregarFormato(slide1);
-  slide1.addText('Título de la diapositiva 1', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
+    if (datosConvertidos !== null) {
+      datosConvertidos = JSON.parse(datosConvertidos);
+      console.log('datosConvertidos: ', datosConvertidos);
+    } else {
+      console.log('No se encontró la clave "datos_archivos_memoria" en el almacenamiento local');
+    }
 
-  slide1.addText('¡Bienvenidos!', { x: 1.5, y: 2.0, fontSize: 48 });
+    if(datosConvertidos){
+
+      //Iniciamos la creacion del reporte
+      const pptx = new PptxGenJS();
+
+      // Añadimos una nueva diapositiva con un título
+      const slide1 = pptx.addSlide({ masterName: 'Primera diapositiva.' });
+
+      agregarFormato(slide1);
+      slide1.addText('Título de la diapositiva 1', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true });
+
+      slide1.addText('Hola!', { x: 1.5, y: 2.0, fontSize: 48 });
+
+      // Agregar la tabla al slide
+      slide1.addTable(datosConvertidos[0], {
+        x: 0.5, // posición x de la tabla en pulgadas
+        y: 1.5, // posición y de la tabla en pulgadas
+        w: 8, // ancho de la tabla en pulgadas
+        h: 2, // alto de la tabla en pulgadas
+        columnWidths: [2, 2, 4], // ancho de cada columna en pulgadas
+        fontSize: 12, // tamaño de fuente
+        fontFace: 'Calibri', // tipo de fuente
+        row: {
+          fill: 'F7F7F7', // color de fondo de las filas
+          color: '595959', // color de texto de las filas
+          bold: true, // texto en negrita
+        },
+        headerRow: {
+          fill: 'D8D8D8', // color de fondo de la primera fila (encabezados)
+          color: '595959', // color de texto de la primera fila
+          bold: true, // texto en negrita
+        },
+        borders: {
+          left: { pt: '10', color: '595959', style: 'solid' }, // borde izquierdo
+          right: { pt: '10', color: '595959', style: 'solid' }, // borde derecho
+          top: { pt: '10', color: '595959', style: 'solid' }, // borde superior
+          bottom: { pt: '10', color: '595959', style: 'solid' }, // borde inferior
+        },
+      });
+
+      // Añadimos una nueva diapositiva con dos columnas de texto
+      const slide2 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
+
+      agregarFormato(slide2);
+      slide2.addText('Título de la diapositiva 2', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true });
+
+      // Añadimos una nueva diapositiva con dos columnas de texto
+      const slide3 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
+
+      agregarFormato(slide3);
+      slide3.addText('Título de la diapositiva 3', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true });
+
+      // Generamos la presentación
+      pptx.writeFile('ejemplo.pptx');
 
 
-  // Añadimos una nueva diapositiva con dos columnas de texto
-  const slide2 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
-
-  agregarFormato(slide2);
-  slide2.addText('Título de la diapositiva 2', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
-
-  // Añadimos una nueva diapositiva con dos columnas de texto
-  const slide3 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
-
-  agregarFormato(slide3);
-  slide3.addText('Título de la diapositiva 3', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
-
-  // Generamos la presentación
-  pptx.writeFile('ejemplo.pptx');
+    }
 
 })
