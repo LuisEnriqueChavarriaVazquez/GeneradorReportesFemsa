@@ -1,0 +1,17 @@
+{
+  "name": "generadorreporte",
+  "version": "1.0.0",
+  "description": "It's a reports generator",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Chavarria Vazquez Luis Enrique",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
