@@ -76,7 +76,7 @@ function imprimirNombreFileDentroCaja(nombreFileContainer: HTMLElement, nombreAr
   nombreFileContainer.innerHTML = "";
 
   //Metemos los elementos
-  if(nombreArchivosArr.length >= 1){
+  if (nombreArchivosArr.length >= 1) {
     nombreArchivosArr.forEach((nombre: string) => {
       nombreFileContainer.innerHTML += `
       <div class="showFilesSelected-element border1 shadow1">
@@ -88,7 +88,7 @@ function imprimirNombreFileDentroCaja(nombreFileContainer: HTMLElement, nombreAr
       `;
     });
     showFilesSelectedEmpty.setAttribute('style', 'display: none;');
-  }else if(nombreArchivosArr.length == 0){
+  } else if (nombreArchivosArr.length == 0) {
     showFilesSelectedEmpty.removeAttribute('style');
   }
 }
@@ -125,3 +125,82 @@ buttonSelect.addEventListener('click', () => {
 });
 
 //////////////////////////////////
+
+
+//////////////////////////////////
+//Creación del reporte
+/////////////////////////////////
+
+//Accedemos al boton para generar los formatos
+let createReport = document.getElementById('createReport');
+let numeroDiapo = 1;
+
+//Creamos la funcion para agregar el formato
+function agregarFormato(slide: any) {
+  // Agregamos los encabezados para la diapositiva.
+  slide.addShape('rect', {
+    x: 0, // posición horizontal en pulgadas
+    y: 0, // posición vertical en pulgadas
+    w: 10, // ancho en pulgadas
+    h: .9, // alto en pulgadas 5.64 es el maximo
+    fill: 'D80032', // color de relleno en formato hexadecimal
+  });
+
+  slide.addShape('rect', {
+    x: 0,
+    y: .9,
+    w: 10,
+    h: .1,
+    fill: 'b9002b',
+  });
+
+  slide.addShape('rect', {
+    x: 0,
+    y: 5.61,
+    w: 10,
+    h: .3,
+    fill: 'b9002b',
+  });
+
+  // Agrega una imagen desde una URL
+  slide.addImage({
+    path: '../img/logo.png',
+    x: 8.5, // posición horizontal en pulgadas
+    y: -.2, // posición vertical en pulgadas
+    w: 1.5, // ancho en pulgadas
+    h: 1.3 // alto en pulgadas
+  });
+
+  //Agregamos la numeracion
+  slide.addText(numeroDiapo++, { x: 9.5, y: 5.75, fontSize: 15, color: "ffffff" });
+}
+
+//Creamos el reporte
+createReport?.addEventListener('click', () => {
+  const pptx = new PptxGenJS();
+
+  // Añadimos una nueva diapositiva con un título
+  const slide1 = pptx.addSlide({ masterName: 'Primera diapositiva.' });
+
+  agregarFormato(slide1);
+  slide1.addText('Título de la diapositiva 1', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
+
+  slide1.addText('¡Bienvenidos!', { x: 1.5, y: 2.0, fontSize: 48 });
+
+
+  // Añadimos una nueva diapositiva con dos columnas de texto
+  const slide2 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
+
+  agregarFormato(slide2);
+  slide2.addText('Título de la diapositiva 2', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
+
+  // Añadimos una nueva diapositiva con dos columnas de texto
+  const slide3 = pptx.addSlide({ masterName: 'Segunda diapositiva' });
+
+  agregarFormato(slide3);
+  slide3.addText('Título de la diapositiva 3', { x: 0, y: 0.45, fontSize: 22, color: 'ffffff', fontFace: 'Arial', bold: true});
+
+  // Generamos la presentación
+  pptx.writeFile('ejemplo.pptx');
+
+})
